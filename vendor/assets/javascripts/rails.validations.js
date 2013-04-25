@@ -31,6 +31,7 @@
 
   $.fn.isValid = function(validators) {
     var obj;
+
     obj = $(this[0]);
     if (obj.is('form')) {
       return validateForm(obj, validators);
@@ -46,6 +47,7 @@
 
   validateForm = function(form, validators) {
     var valid;
+
     form.trigger('form:validate:before.ClientSideValidations');
     valid = true;
     form.find(':input:enabled:visible[data-validate]').each(function() {
@@ -64,7 +66,8 @@
   };
 
   validateElement = function(element, validators) {
-    var afterValidate, destroyInputName, executeValidators, failElement, local, passElement, remote;
+    var afterValidate, destroyElem, destroyInputName, executeValidators, failElement, local, passElement, remote;
+
     element.trigger('element:validate:before.ClientSideValidations');
     passElement = function() {
       return element.trigger('element:validate:pass.ClientSideValidations').data('valid', null);
@@ -78,6 +81,7 @@
     };
     executeValidators = function(context) {
       var fn, kind, message, valid, validator, _i, _len, _ref;
+
       valid = true;
       for (kind in context) {
         fn = context[kind];
@@ -98,7 +102,8 @@
       return valid;
     };
     destroyInputName = element.attr('name').replace(/\[([^\]]*?)\]$/, '[_destroy]');
-    if ($("input[name='" + destroyInputName + "']").val() === "1") {
+    destroyElem = $("input[name='" + destroyInputName + "']");
+    if (destroyElem.length === 1 && destroyElem.val() === "1") {
       passElement();
       return afterValidate();
     }
@@ -133,6 +138,7 @@
 
   window.ClientSideValidations.reset = function(form) {
     var $form, key;
+
     $form = $(form);
     ClientSideValidations.disable(form);
     ClientSideValidations.disable($form.find(':input'));
@@ -144,6 +150,7 @@
 
   window.ClientSideValidations.disable = function(target) {
     var $target;
+
     $target = $(target);
     $target.off('.ClientSideValidations');
     $target.removeData('valid');
@@ -156,6 +163,7 @@
   window.ClientSideValidations.enablers = {
     form: function(form) {
       var $form, binding, event, _ref;
+
       $form = $(form);
       form.ClientSideValidations = {
         settings: window.ClientSideValidations.forms[$form.attr('id')],
@@ -201,6 +209,7 @@
     },
     input: function(input) {
       var $form, $input, binding, event, form, _ref;
+
       $input = $(input);
       form = input.form;
       $form = $(form);
@@ -219,6 +228,7 @@
         },
         'element:validate:fail.ClientSideValidations': function(eventData, message) {
           var element;
+
           element = $(this);
           return ClientSideValidations.callbacks.element.fail(element, message, function() {
             return form.ClientSideValidations.addError(element, message);
@@ -226,6 +236,7 @@
         },
         'element:validate:pass.ClientSideValidations': function(eventData) {
           var element;
+
           element = $(this);
           return ClientSideValidations.callbacks.element.pass(element, function() {
             return form.ClientSideValidations.removeError(element);
@@ -244,6 +255,7 @@
       });
       return $input.filter('[id$=_confirmation]').each(function() {
         var confirmationElement, element, _ref1, _results;
+
         confirmationElement = $(this);
         element = $form.find("#" + (this.id.match(/(.+)_confirmation/)[1]) + ":input");
         if (element[0]) {
@@ -278,6 +290,7 @@
       },
       acceptance: function(element, options) {
         var _ref;
+
         switch (element.attr('type')) {
           case 'checkbox':
             if (!element.attr('checked')) {
@@ -292,6 +305,7 @@
       },
       format: function(element, options) {
         var message;
+
         message = this.presence(element, options);
         if (message) {
           if (options.allow_blank === true) {
@@ -308,6 +322,7 @@
       },
       numericality: function(element, options) {
         var CHECKS, check, check_value, fn, form, operator, val;
+
         val = jQuery.trim(element.val());
         if (!ClientSideValidations.patterns.numericality.test(val)) {
           if (options.allow_blank === true && this.presence(element, {
@@ -354,6 +369,7 @@
       },
       length: function(element, options) {
         var CHECKS, blankOptions, check, fn, message, operator, tokenized_length, tokenizer;
+
         tokenizer = options.js_tokenizer || "split('')";
         tokenized_length = new Function('element', "return (element.val()." + tokenizer + " || '').length")(element);
         CHECKS = {
@@ -383,6 +399,7 @@
       },
       exclusion: function(element, options) {
         var lower, message, option, upper, _ref;
+
         message = this.presence(element, options);
         if (message) {
           if (options.allow_blank === true) {
@@ -393,6 +410,7 @@
         if (options["in"]) {
           if (_ref = element.val(), __indexOf.call((function() {
             var _i, _len, _ref1, _results;
+
             _ref1 = options["in"];
             _results = [];
             for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
@@ -414,6 +432,7 @@
       },
       inclusion: function(element, options) {
         var lower, message, option, upper, _ref;
+
         message = this.presence(element, options);
         if (message) {
           if (options.allow_blank === true) {
@@ -424,6 +443,7 @@
         if (options["in"]) {
           if (_ref = element.val(), __indexOf.call((function() {
             var _i, _len, _ref1, _results;
+
             _ref1 = options["in"];
             _results = [];
             for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
@@ -452,6 +472,7 @@
       },
       uniqueness: function(element, options) {
         var form, matches, name, name_prefix, name_suffix, valid, value;
+
         name = element.attr('name');
         if (/_attributes\]\[\d/.test(name)) {
           matches = name.match(/^(.+_attributes\])\[\d+\](.+)$/);
@@ -483,6 +504,7 @@
     remote: {
       uniqueness: function(element, options) {
         var data, key, message, name, scope_value, scoped_element, scoped_name, _ref;
+
         message = ClientSideValidations.validators.local.presence(element, options);
         if (message) {
           if (options.allow_blank === true) {
@@ -547,8 +569,9 @@
     'ActionView::Helpers::FormBuilder': {
       add: function(element, settings, message) {
         var form, inputErrorField, label, labelErrorField;
+
         form = $(element[0].form);
-        if (element.data('valid') !== false && !(form.find("label.message[for='" + (element.attr('id')) + "']")[0] != null)) {
+        if (element.data('valid') !== false && (form.find("label.message[for='" + (element.attr('id')) + "']")[0] == null)) {
           inputErrorField = jQuery(settings.input_tag);
           labelErrorField = jQuery(settings.label_tag);
           label = form.find("label[for='" + (element.attr('id')) + "']:not(.message)");
@@ -566,6 +589,7 @@
       },
       remove: function(element, settings) {
         var errorFieldClass, form, inputErrorField, label, labelErrorField;
+
         form = $(element[0].form);
         errorFieldClass = jQuery(settings.input_tag).attr('class');
         inputErrorField = element.closest("." + (errorFieldClass.replace(" ", ".")));

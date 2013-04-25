@@ -5,10 +5,11 @@ module('Validate Element', {
       input_tag: '<div class="field_with_errors"><span id="input_tag" /><label for="user_name" class="message"></label></div>',
       label_tag: '<div class="field_with_errors"><label id="label_tag" /></div>',
       validators: {
-        'user[name]':{"presence":{"message": "must be present"}, "format":{"message":"is invalid","with":/\d+/}},
-        'user[password]':{"confirmation":{"message": "must match confirmation"}},
-        'user[agree]':{"acceptance": {"message": "must be accepted"}},
-        'user[email]':{"uniqueness":{"message": "must be unique"},"presence":{"message": "must be present"}}
+        'user[name]':{"presence":[{"message": "must be present"}], "format":[{"message":"is invalid","with":/\d+/}]},
+        'user[password]':{"confirmation":[{"message": "must match confirmation"}]},
+        'user[agree]':{"acceptance": [{"message": "must be accepted"}]},
+        'user[email]':{"uniqueness":[{"message": "must be unique"}],"presence":[{"message": "must be present"}]},
+        'user[phone_numbers_attributes][][number]':{"presence":[{"message": "must be present"}]}
       }
     }
 
@@ -24,14 +25,12 @@ module('Validate Element', {
         .append($('<input />', {
           name: 'user[name]',
           id: 'user_name',
-          'data-validate': 'true',
           type: 'text'
         }))
         .append($('<label for="user_password">Password</label>'))
         .append($('<input />', {
           name: 'user[password]',
           id: 'user_password',
-          'data-validate': 'true',
           type: 'password'
         }))
         .append($('<label for="user_password_confirmation">Password Confirmation</label>'))
@@ -44,16 +43,38 @@ module('Validate Element', {
         .append($('<input />', {
           name: 'user[agree]',
           id: 'user_agree',
-          'data-validate': 'true',
           type: 'checkbox',
           value: 1
         }))
         .append($('<input />', {
           name: 'user[email]',
           id: 'user_email',
-          'data-validate': 'true',
           type: 'text'
         }))
+        .append($('<label for="user_phone_numbers_attributes_0_number">Phone Number</label>'))
+        .append($('<input />', {
+          name: 'user[phone_numbers_attributes][0][number]',
+          id: 'user_phone_numbers_attributes_0_number',
+          type: 'text'
+        })
+        .append($('<input />', {
+          name: 'user[phone_numbers_attributes][0][_destroy]',
+          id: 'user_phone_numbers_attributes_0__destroy',
+          type: 'hidden',
+          value: "1"
+        })))
+        .append($('<label for="user_phone_numbers_attributes_1_number">Phone Number</label>'))
+        .append($('<input />', {
+          name: 'user[phone_numbers_attributes][1][number]',
+          id: 'user_phone_numbers_attributes_1_number',
+          type: 'text'
+        }))
+        .append($('<label for="user_phone_numbers_attributes_new_1234_number">Phone Number</label>'))
+        .append($('<input />', {
+          name: 'user[phone_numbers_attributes][new_1234][number]',
+          id: 'user_phone_numbers_attributes_new_1234_number',
+          type: 'text'
+        }));
 
     $('form#new_user').validate();
   }
@@ -85,6 +106,28 @@ test('Validate when focusout on confirmation', function() {
   password.val('password');
   confirmation.trigger('focusout');
   ok(password.parent().hasClass('field_with_errors'));
+  ok(label.parent().hasClass('field_with_errors'));
+});
+
+test('Validate nested attributes', function() {
+  var form = $('form#new_user'), input, label;
+
+  input = form.find('input#user_phone_numbers_attributes_1_number');
+  label = $('label[for="user_phone_numbers_attributes_1_number"]');
+  input.trigger('focusout');
+  ok(input.parent().hasClass('field_with_errors'));
+  ok(label.parent().hasClass('field_with_errors'));
+
+  input = form.find('input#user_phone_numbers_attributes_0_number');
+  label = $('label[for="user_phone_numbers_attributes_0_number"]');
+  input.trigger('focusout');
+  equal(input.parent().hasClass('field_with_errors'), false);
+  equal(label.parent().hasClass('field_with_errors'), false);
+
+  input = form.find('input#user_phone_numbers_attributes_new_1234_number');
+  label = $('label[for="user_phone_numbers_attributes_new_1234_number"]');
+  input.trigger('focusout');
+  ok(input.parent().hasClass('field_with_errors'));
   ok(label.parent().hasClass('field_with_errors'));
 });
 
@@ -176,65 +219,6 @@ test("Don't validate confirmation when not a validatable input", function() {
   ok(!input.parent().hasClass('field_with_errors'));
 });
 
-test("Don't validate inputs with 'data-validate' not set to true", function() {
-  $('#qunit-fixture')
-    .append($('<form />', {
-      action: '/users',
-      'data-validate': true,
-      method: 'post',
-      id: 'new_user_2'
-    }))
-    .find('form')
-      .append($('<label for="user_2_name">name</label>'))
-      .append($('<input />', {
-        name: 'user_2[name]',
-        id: 'user_2_name',
-        type: 'name',
-        'data-validate': false
-      }))
-  ClientSideValidations.forms['new_user_2'] = {
-    type: 'ActionView::Helpers::FormBuilder',
-    input_tag: '<div class="field_with_errors"><span id="input_tag" /><label for="user_name" class="message"></label></div>',
-    label_tag: '<div class="field_with_errors"><label id="label_tag" /></div>',
-    validators: { }
-  }
-  $('form#new_user_2').validate();
-  var form = $('form#new_user_2'), input = form.find('input#user_2_name');
-  input.val('123');
-  input.trigger('focusout');
-  ok(!input.parent().hasClass('field_with_errors'));
-});
-
-test("Don't validate inputs with 'data-validate' that are dynamically set to false", function() {
-  $('#qunit-fixture')
-    .append($('<form />', {
-      action: '/users',
-      'data-validate': true,
-      method: 'post',
-      id: 'new_user_2'
-    }))
-    .find('form')
-      .append($('<label for="user_2_name">name</label>'))
-      .append($('<input />', {
-        name: 'user_2[name]',
-        id: 'user_2_name',
-        type: 'name',
-        'data-validate': 'true'
-      }))
-  ClientSideValidations.forms['new_user_2'] = {
-    type: 'ActionView::Helpers::FormBuilder',
-    input_tag: '<div class="field_with_errors"><span id="input_tag" /><label for="user_name" class="message"></label></div>',
-    label_tag: '<div class="field_with_errors"><label id="label_tag" /></div>',
-    validators: { 'user_2[name]':{"presence":{"message": "must be present"}}}
-  }
-  $('form#new_user_2').validate();
-  var form = $('form#new_user_2'), input = form.find('input#user_2_name');
-  input.attr('data-validate', false);
-  input.val('');
-  input.trigger('focusout');
-  ok(!input.parent().hasClass('field_with_errors'));
-});
-
 test("Don't validate disabled inputs", function() {
   $('#qunit-fixture')
     .append($('<form />', {
@@ -249,7 +233,6 @@ test("Don't validate disabled inputs", function() {
         name: 'user_2[name]',
         id: 'user_2_name',
         type: 'name',
-        'data-validate': 'true',
         disabled: 'disabled'
       }))
   ClientSideValidations.forms['new_user_2'] = {
@@ -279,7 +262,6 @@ test("Don't validate dynamically disabled inputs", function() {
         name: 'user_2[name]',
         id: 'user_2_name',
         type: 'name',
-        'data-validate': 'true'
       }))
   ClientSideValidations.forms['new_user_2'] = {
     type: 'ActionView::Helpers::FormBuilder',
@@ -294,3 +276,42 @@ test("Don't validate dynamically disabled inputs", function() {
   input.trigger('focusout');
   ok(!input.parent().hasClass('field_with_errors'));
 });
+
+test('ensure label is scoped to form', function() {
+  var form = $('form#new_user'), input = form.find('input#user_name');
+  var label = $('label[for="user_name"]');
+
+  $('#qunit-fixture')
+    .prepend($('<form />', { id: 'other_form', 'data-validate': true })
+    .append($('<label for="user_name">Name</label>')));
+
+  var otherLabel = $('form#other_form').find('label')
+
+  input.trigger('focusout');
+  ok(!otherLabel.parent().hasClass('field_with_errors'));
+});
+
+test("Return validation result", function() {
+  var input = $('#user_name');
+
+  ok(!input.isValid(ClientSideValidations.forms['new_user'].validators));
+
+  input.val('123').data('changed', true);
+  ok(input.isValid(ClientSideValidations.forms['new_user'].validators));
+});
+
+test('Validate when focusouting and field has disabled validations', function() {
+  var form = $('form#new_user'), input = form.find('input#user_name');
+  var label = $('label[for="user_name"]');
+
+  input.disableClientSideValidations();
+  input.trigger('focusout');
+  ok(!input.parent().hasClass('field_with_errors'));
+  ok(!label.parent().hasClass('field_with_errors'));
+
+  input.enableClientSideValidations();
+  input.trigger('focusout');
+  ok(input.parent().hasClass('field_with_errors'));
+  ok(label.parent().hasClass('field_with_errors'));
+});
+

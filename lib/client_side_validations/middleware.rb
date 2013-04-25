@@ -11,11 +11,14 @@ module ClientSideValidations
       end
 
       def call(env)
-        matches = /^\/validators\/(\w+)$/.match(env['PATH_INFO'])
-        if !matches || (matches[1] == 'uniqueness' && Config.uniqueness_validator_disabled)
-          @app.call(env)
+        if matches = /^\/validators\/(\w+)$/.match(env['PATH_INFO'])
+          if ClientSideValidations::Config.disabled_validators.include?(matches[1].to_sym)
+            [500, {'Content-Type' => 'application/json', 'Content-Length' => '0'}, ['']]
+          else
+            "::ClientSideValidations::Middleware::#{matches[1].camelize}".constantize.new(env).response
+          end
         else
-          "::ClientSideValidations::Middleware::#{matches[1].camelize}".constantize.new(env).response
+          @app.call(env)
         end
       end
     end
@@ -24,9 +27,11 @@ module ClientSideValidations
       attr_accessor :request, :body, :status
 
       def initialize(env)
-        self.body    = ''
-        self.status  = 200
-        self.request = ActionDispatch::Request.new(env)
+        # Filter out cache buster
+        env['QUERY_STRING'] = env['QUERY_STRING'].split('&').select { |p| !p.match(/^_=/) }.join('&')
+        self.body           = ''
+        self.status         = 200
+        self.request        = ActionDispatch::Request.new(env)
       end
 
       def response
@@ -41,14 +46,20 @@ module ClientSideValidations
     class Uniqueness < Base
       IGNORE_PARAMS = %w{case_sensitive id scope}
       REGISTERED_ORMS = []
+      class NotValidatable < StandardError; end
 
       def response
-        if is_unique?
-          self.status = 204
-          self.body   = 'true'
-        else
-          self.status = 200
-          self.body   = 'false'
+        begin
+          if is_unique?
+            self.status = 404
+            self.body   = 'true'
+          else
+            self.status = 200
+            self.body   = 'false'
+          end
+        rescue NotValidatable
+          self.status = 500
+          self.body = ''
         end
         super
       end
@@ -74,6 +85,10 @@ module ClientSideValidations
         attribute        = request.params[resource].keys.first
         value            = request.params[resource][attribute]
         middleware_class = nil
+
+        unless Array.wrap(klass._validators[attribute.to_sym]).find { |v| v.kind == :uniqueness }
+          raise NotValidatable
+        end
 
         registered_orms.each do |orm|
           if orm.is_class?(klass)

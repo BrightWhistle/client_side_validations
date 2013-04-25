@@ -23,10 +23,33 @@ module ActionViewTestSetup
     resources :posts do
       resources :comments
     end
+
+    root :to => 'main#index'
+  end
+
+  def url_for(object)
+    @url_for_options = object
+    if object.is_a?(Hash) && object[:use_route].blank? && object[:controller].blank?
+      object.merge!(:controller => "main", :action => "index")
+    end
+    super
   end
 
   def _routes
     Routes
+  end
+
+  # Rails 3.2.0 dropped size from the form elements
+  def legacy_size
+    if Rails.version < '3.2.0'
+      'size="30" '
+    end
+  end
+
+  def hidden_input_for_select(name)
+    if Rails.version >= '3.2.0'
+      %{<input name="#{name}" type="hidden" value="" />}
+    end
   end
 
   include Routes.url_helpers
@@ -34,19 +57,19 @@ module ActionViewTestSetup
   def setup
     super
 
-    # Create "label" locale for testing I18n label helpers
+    # Create 'label' locale for testing I18n label helpers
     I18n.backend.store_translations 'label', {
       :activemodel => {
         :attributes => {
           :post => {
-            :cost => "Total cost"
+            :cost => 'Total cost'
           }
         }
       },
       :helpers => {
         :label => {
           :post => {
-            :body => "Write entire text here"
+            :body => 'Write entire text here'
           }
         }
       }
@@ -68,24 +91,6 @@ module ActionViewTestSetup
 
     @post = Post.new
     @comment = Comment.new
-    def @post.errors()
-      Class.new{
-        def [](field); field == "author_name" ? ["can't be empty"] : [] end
-        def empty?() false end
-        def count() 1 end
-        def full_messages() [ "Author name can't be empty" ] end
-      }.new
-    end
-    def @post.id; 123; end
-    def @post.id_before_type_cast; 123; end
-    def @post.to_param; '123'; end
-
-    @post.persisted   = true
-    @post.title       = "Hello World"
-    @post.author_name = ""
-    @post.body        = "Back to the hill and over it again!"
-    @post.secret      = 1
-    @post.written_on  = Date.new(2004, 6, 15)
 
     if defined?(ActionView::OutputFlow)
       @view_flow        = ActionView::OutputFlow.new
@@ -132,7 +137,7 @@ module ActionViewTestSetup
   end
 
   def build_script_tag(html, id, validators)
-    (html || "") + %Q{<script>window.ClientSideValidations.forms['#{id}'] = #{client_side_form_settings_helper.merge(:validators => validators).to_json};</script>}
+    (html || "") + %Q{<script>//<![CDATA[\nif(window.ClientSideValidations==undefined)window.ClientSideValidations={};if(window.ClientSideValidations.remote_validators_prefix==undefined)window.ClientSideValidations.remote_validators_prefix='';if(window.ClientSideValidations.forms==undefined)window.ClientSideValidations.forms={};window.ClientSideValidations.forms['#{id}'] = #{client_side_form_settings_helper.merge(:validators => validators).to_json};\n//]]></script>}
   end
 
   protected
@@ -156,7 +161,7 @@ module ActionViewTestSetup
     end
     alias_method :admin_post_comment_path, :admin_comment_path
 
-    def posts_path
+    def posts_path(options={})
       "/posts"
     end
 

@@ -69,19 +69,31 @@ class ClientSideValidationsActiveRecordMiddlewareTest < Test::Unit::TestCase
 
   def test_mysql_adapter_uniqueness_when_id_is_given
     user = User.create(:email => 'user@test.com')
-    ActiveRecord::ConnectionAdapters::SQLite3Adapter.
-                                        any_instance.expects(:instance_variable_get).
-                                        with("@config").
-                                        returns({:adapter => "mysql"})
+    User.connection.stubs('adapter_name').returns('Mysql2')
 
     sql_without_binary = "#{User.arel_table["email"].eq(user.email).to_sql} AND #{User.arel_table.primary_key.not_eq(user.id).to_sql}"
+    relation = Arel::Nodes::SqlLiteral.new("BINARY #{sql_without_binary}")
+
+    # NOTE: Stubs User#where because SQLite3 don't know BINARY
+    result = User.where(sql_without_binary)
+    User.expects(:where).with(relation).returns(result)
+
+    get '/validators/uniqueness', { 'user[email]' => user.email, 'case_sensitive' => true, 'id' => user.id}
+    assert_equal 'true', last_response.body
+  end
+
+  def test_mysql_adapter_uniqueness_when_id_is_given_with_scope
+    user = User.create(:email => 'user@test.com', :name => 'Brian')
+    User.connection.stubs('adapter_name').returns('Mysql2')
+
+    sql_without_binary = "#{User.arel_table["email"].eq(user.email).to_sql} AND #{User.arel_table.primary_key.not_eq(user.id).to_sql} AND #{User.arel_table["name"].eq(user.name).to_sql}"
     relation = Arel::Nodes::SqlLiteral.new("BINARY #{sql_without_binary}")
 
     #NOTE: Stubs User#where because SQLite3 don't know BINARY
     result = User.where(sql_without_binary)
     User.expects(:where).with(relation).returns(result)
 
-    get '/validators/uniqueness', { 'user[email]' => user.email, 'case_sensitive' => true, 'id' => user.id}
+    get '/validators/uniqueness', { 'user[email]' => user.email, 'scope' => {'name' => user.name}, 'case_sensitive' => true, 'id' => user.id}
     assert_equal 'true', last_response.body
   end
 
@@ -186,20 +198,6 @@ class ClientSideValidationsActiveRecordMiddlewareTest < Test::Unit::TestCase
 
     assert_equal 'false', last_response.body
     assert last_response.ok?
-  end
-
-  def test_uniqueness_when_uniqueness_validation_is_disabled_and_resource_exists
-    # Disable uniqueness validations
-    ClientSideValidations::Config.uniqueness_validator_disabled = true
-
-    User.create(:email => 'user@test.com')
-    get '/validators/uniqueness', { 'user[email]' => 'user@test.com', 'case_sensitive' => true }
-
-    assert_equal 'success', last_response.body
-    assert last_response.ok?
-
-    # Restore to default
-    ClientSideValidations::Config.uniqueness_validator_disabled = false
   end
 end
 

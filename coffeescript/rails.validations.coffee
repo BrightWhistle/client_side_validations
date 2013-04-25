@@ -77,7 +77,9 @@ validateElement = (element, validators) ->
 
   # if _destroy for this input group == "1" pass with flying colours, it'll get deleted anyway..
   destroyInputName = element.attr('name').replace(/\[([^\]]*?)\]$/, '[_destroy]')
-  if $("input[name='#{destroyInputName}']").val() == "1"
+  destroyElem = $("input[name='#{destroyInputName}']")
+  # validate if there are 2 ie. hidden & checkbox combo like in rails form.check_box tag http://api.rubyonrails.org/classes/ActionView/Helpers/FormHelper.html#method-i-check_box
+  if destroyElem.length == 1 && destroyElem.val() == "1"
     passElement()
     return afterValidate()
 
